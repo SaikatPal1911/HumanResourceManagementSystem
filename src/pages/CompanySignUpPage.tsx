@@ -13,7 +13,6 @@ const CompanySignUpPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [selectedLogo, setSelectedLogo] = useState('');
 
   const {
     register,
@@ -35,7 +34,7 @@ const CompanySignUpPage = () => {
         options: {
           data: {
             full_name: data.fullName,
-            company_name: data.companyName,
+            company_code: data.companyCode,
             phone: data.phone,
           },
         },
@@ -49,50 +48,33 @@ const CompanySignUpPage = () => {
         throw new Error('User creation failed');
       }
 
-      const userId = signUpData.user.id;
-
-      // Step 2: Create company record
-      const companyCode = data.companyName
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '')
-        .substring(0, 5);
-
-      const { data: companyData, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          company_name: data.companyName,
-          company_code: companyCode,
-        })
-        .select('id')
-        .single();
-
-      if (companyError) {
-        throw companyError;
+      // Step 2: Attach this user as admin to an EXISTING, pre-registered
+      // company (matched by companyCode). No new company can be created
+      // from this page, and the client never chooses its own role.
+      const session = signUpData.session;
+      if (!session) {
+        throw new Error('Could not establish a session after sign up. Please try logging in.');
       }
 
-      const companyId = companyData.id;
+      const { data: setupResult, error: setupError } = await supabase.functions.invoke(
+        'create-company-admin',
+        {
+          body: {
+            companyCode: data.companyCode,
+            fullName: data.fullName,
+            phone: data.phone,
+          },
+        },
+      );
 
-      // Step 3: Create employee record for admin
-      const [firstName, ...lastNameParts] = data.fullName.split(' ');
-      const lastName = lastNameParts.join(' ') || firstName;
-
-      const { error: employeeError } = await supabase.from('employees').insert({
-        id: userId,
-        company_id: companyId,
-        first_name: firstName,
-        last_name: lastName,
-        email: data.email,
-        phone: data.phone || '',
-        role: 'admin',
-        status: 'active',
-        date_of_joining: new Date().toISOString().split('T')[0],
-      });
-
-      if (employeeError) {
-        throw employeeError;
+      if (setupError) {
+        throw setupError;
+      }
+      if (setupResult?.error) {
+        throw new Error(setupResult.error);
       }
 
-      // Step 4: Sign in user automatically
+      // Step 3: Sign in user automatically
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -102,7 +84,7 @@ const CompanySignUpPage = () => {
         throw signInError;
       }
 
-      // Step 5: Redirect to admin dashboard
+      // Step 4: Redirect to admin dashboard
       navigate('/admin');
     } catch (error: any) {
       const errorMessage = error.message || 'An unexpected error occurred.';
@@ -124,46 +106,34 @@ const CompanySignUpPage = () => {
             <span>HRMS</span>
           </Link>
           <div className="auth-kicker">Admin Account Setup</div>
-          <h1>Create your <span>company's first account</span></h1>
+          <h1>Claim your <span>company's admin account</span></h1>
           <p>
-            This is a one-time setup for the primary HR administrator. You'll be logged in immediately and can start adding employees.
+            This only works if your company has already been registered by us. Enter the company code you were given to set up the one admin account for it.
           </p>
           <ul className="auth-points">
-            <li>This account will have full admin privileges.</li>
-            <li>Employees cannot register themselves.</li>
-            <li>You will create employee accounts from your dashboard.</li>
+            <li>Your company must already exist in our system.</li>
+            <li>Only the first person to sign up for a company code becomes its admin.</li>
+            <li>Employees cannot register themselves; the admin adds them from the dashboard.</li>
           </ul>
         </section>
 
         <section className="auth-panel">
           <div className="auth-card">
-            <h1>Create Company Account</h1>
-            <p className="subtitle">This is the first step to streamlining your HR operations.</p>
+            <h1>Claim Admin Account</h1>
+            <p className="subtitle">Enter your company code to set up the admin account.</p>
 
             <div className="auth-note">
-              <strong>Important:</strong> this creates the first admin account for the company. Employees are added later by HR from inside the app.
-            </div>
-
-            <div className="upload-row" style={{ marginBottom: '14px' }}>
-              <div className="auth-heading" style={{ margin: 0, textAlign: 'left' }}>COMPANY LOGO</div>
-              <div className="upload-control">
-                <label className="upload-label" htmlFor="companyLogo">↑ Upload Logo</label>
-                <input
-                  id="companyLogo"
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) => setSelectedLogo(event.target.files?.[0]?.name ?? '')}
-                />
-              </div>
+              <strong>Important:</strong> this only works for companies already registered in our system. If you don't have a company code, contact us first.
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               {formError && <p className="error-message form-error-message">{formError}</p>}
 
               <div className="form-group">
-                <label htmlFor="companyName">Company Name</label>
-                <input id="companyName" type="text" placeholder="Your Company LLC" {...register('companyName')} className={`form-input ${errors.companyName ? 'error' : ''}`} disabled={isLoading} />
-                {errors.companyName && <p className="error-message">{errors.companyName.message}</p>}
+                <label htmlFor="companyCode">Company Code</label>
+                <input id="companyCode" type="text" placeholder="e.g., ACME (given by your organization)" {...register('companyCode')} className={`form-input ${errors.companyCode ? 'error' : ''}`} disabled={isLoading} />
+                {errors.companyCode && <p className="error-message">{errors.companyCode.message}</p>}
+                <p className="helper-text">Your company must already be registered. Ask your organization for this code.</p>
               </div>
 
               <div className="form-group">
@@ -231,8 +201,6 @@ const CompanySignUpPage = () => {
                 </div>
                 {errors.confirmPassword && <p className="error-message">{errors.confirmPassword.message}</p>}
               </div>
-
-              {selectedLogo && <p className="helper-text">Selected logo: {selectedLogo}</p>}
 
               <button type="submit" className="btn-main auth-button" disabled={isLoading || isSubmitting}>
                 {isLoading ? 'Setting up your account...' : 'Create Account'}

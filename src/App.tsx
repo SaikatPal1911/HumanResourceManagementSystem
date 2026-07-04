@@ -42,11 +42,19 @@ const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <ProtectedRoute><AdminDashboard /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '/employee',
-    element: <ProtectedRoute><EmployeeDashboard /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={['employee']}>
+        <EmployeeDashboard />
+      </ProtectedRoute>
+    ),
   },
   {
     path: '*',

@@ -4,14 +4,17 @@ import { supabase } from '../lib/supabase';
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  allowedRoles?: Array<'admin' | 'employee'>;
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -22,7 +25,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
       const { data: employee, error } = await supabase
         .from('employees')
-        .select('must_change_password')
+        .select('role, must_change_password, status')
         .eq('id', session.user.id)
         .single();
 
@@ -32,9 +35,24 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         return;
       }
 
+      if (employee.status === 'inactive') {
+        await supabase.auth.signOut();
+        navigate('/login', { replace: true });
+        return;
+      }
+
       if (employee.must_change_password && location.pathname !== '/set-password') {
         navigate('/set-password', { replace: true });
-      } else {
+        return;
+      }
+
+      if (allowedRoles && !allowedRoles.includes(employee.role as 'admin' | 'employee')) {
+        const fallback = employee.role === 'admin' ? '/admin' : '/employee';
+        navigate(fallback, { replace: true });
+        return;
+      }
+
+      if (isMounted) {
         setLoading(false);
       }
     };
@@ -47,10 +65,13 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate, location]);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [navigate, location, allowedRoles]);
 
-  if (loading) return <div>Loading...</div>; // Or a spinner component
+  if (loading) return <div>Loading...</div>;
 
   return <>{children}</>;
 };
