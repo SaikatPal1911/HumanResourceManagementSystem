@@ -4,6 +4,7 @@ import CompanySignUpPage from './pages/CompanySignUpPage';
 import SignIn from './pages/SignIn';
 import ForgotPassword from './pages/ForgotPassword';
 import SetPassword from './pages/SetPassword';
+import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import ContactPage from './pages/ContactPage';
@@ -22,6 +23,10 @@ const router = createBrowserRouter([
   {
     path: '/login',
     element: <SignIn />,
+  },
+  {
+    path: '/auth/callback',
+    element: <AuthCallback />,
   },
   {
     path: '/forgot-password',
