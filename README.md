@@ -2,6 +2,26 @@
 
 **Every workday, perfectly aligned.**
 
+## Copilot Master Prompt
+
+### Phase 1: Auth + Admin Panel
+
+Stack: React + TypeScript + Supabase (Auth, Postgres, RLS, Edge Functions)
+
+How to use this file: Copy one phase at a time into GitHub Copilot Chat (or Copilot Workspace), in order. Don't paste the whole file at once — Copilot works far better with one scoped task per prompt. Wait for each phase to finish, test it, then move to the next. The phases already contain everything Copilot needs to know (field names, formats, logic) — you don't need to explain anything extra.
+
+0. Context block — paste this once at the start of your Copilot session
+
+I'm building a Human Resource Management System (HRMS) using React + TypeScript + Supabase.
+
+Two roles exist: "admin" (HR Officer/Admin) and "employee".
+
+Core rule: Employees can NEVER self-register. Only an Admin/HR user can create employee accounts. The very first Admin/HR account for a company is created through a one-time "Company Sign Up" flow (with email verification). Every employee account after that is created from inside the app by an Admin/HR user, with an auto-generated Login ID and an auto-generated temporary password.
+
+I will build this in phases. Wait for me to confirm each phase works before moving to the next. Ask me before assuming a folder structure if one doesn't already exist.
+
+My landing/hero page UI is already designed separately — do not touch or redesign it. Match its visual style (colors, fonts, spacing, component patterns) for every new screen you build from now on. If you don't have access to that file, ask me for the component/CSS file path before styling new pages.
+
 ## Description
 
 The Human Resource Management System (HRMS) is a web-based platform designed to digitize and streamline core HR operations for organizations. It provides role-based access for Admins/HR Officers and Employees, covering secure authentication, employee profile management, attendance tracking, leave and time-off management, payroll visibility, and approval workflows — all in one centralized system.
